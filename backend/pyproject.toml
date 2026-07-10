@@ -1,0 +1,103 @@
+[project]
+name = "dvpwa"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "alembic>=1.18.5",
+    "fastapi>=0.139.0",
+    "httpx>=0.28.1",
+    "psycopg2-binary>=2.9.12",
+    "pydantic-settings>=2.14.2",
+    "pyjwt>=2.13.0",
+    "python-multipart>=0.0.32",
+    "sqlmodel>=0.0.39",
+    "uvicorn>=0.51.0",
+]
+
+[dependency-groups]
+dev = [
+    "bandit>=1.9.4",
+    "pre-commit>=4.6.0",
+    "ruff>=0.15.13",
+    "vulture>=2.16",
+]
+
+
+[tool.yapf]
+based_on_style  = "google"
+indent_width = 4
+# Force multi-line argument layout
+split_before_first_argument = true
+split_arguments_when_comma_terminated = true
+split_all_comma_separated_values = true
+
+# Optional but helps readability
+dedent_closing_brackets = true
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    # "ANN",
+    # "COM812",
+    # "D106",
+    # "RUF001",
+    # "D203",
+    # "D212",
+    "D100",
+    # "PLC0415",
+    # "TRY400",
+    # "PLR2004",
+    # "C901",
+    # "PLR0912",
+    # "PLR0913",
+    # "PLR0915",
+    # "ARG001",
+    # "DTZ005",
+    # "DTZ006",
+    # "D102",
+    # "BLE001",
+    # "D104",
+    # "FBT002",
+    # "S311",
+    # "DJ001",
+    # "DTZ007",
+    # "FBT001",
+    # "FBT003",
+    # "S110",
+    # "N806",
+    # "PLR0911",
+    # "TD002",
+    # "TD003",
+    # "N999"
+]
+
+extend-safe-fixes = [
+    "D200",  # One-line docstring should fit on one line
+    "D400",  # First line should end with a period
+    "D415",  # First line should end with a period, question mark, or exclamation point
+]
+
+# Ignore specific error codes in specific files
+[tool.ruff.lint.per-file-ignores]
+"**/migrations/*.py" = ["ALL"]
+"tests/*" = ["ALL"]
+"manage.py" = ["ALL"]
+"**/urls.py" = ["ALL"]
+"**/admin.py" = ["ALL"]
+
+[tool.ruff.format]
+
+[tool.bandit]
+exclude_dirs = [".venv", "tests"]
+
+
+[tool.vulture]
+ignore_decorators = ["@app.route", "@require_*"]
+sort_by_size = true
+min_confidence = 70

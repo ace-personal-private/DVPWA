@@ -1,0 +1,1 @@
+"""StonksCo backend application."""

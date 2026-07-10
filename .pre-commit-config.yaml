@@ -1,0 +1,65 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.2.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: check-yaml
+
+- repo: https://github.com/astral-sh/uv-pre-commit
+  # uv version.
+  rev: 0.11.28
+  hooks:
+    - id: uv-lock
+      args: ["--project=backend/pyproject.toml"]
+      files: ^backend/(pyproject\.toml|uv\.lock)$
+    - id: uv-audit
+      args: ["--project=backend/pyproject.toml"]
+      files: ^backend/(pyproject\.toml|uv\.lock)$
+
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  # Ruff version.
+  rev: v0.15.21
+  hooks:
+    # Run the linter.
+    - id: ruff-check
+      types_or: [ python, pyi, jupyter, pyproject ]
+      args: [ "--fix", "--config=backend/pyproject.toml" ]
+    # Run the formatter.
+    - id: ruff-format
+      args: [ "--config=backend/pyproject.toml" ]
+# add bandit
+- repo: https://github.com/PyCQA/bandit
+  rev: '1.9.4'
+  hooks:
+  - id: bandit
+    args: ["-c", "backend/pyproject.toml"]
+
+- repo: https://github.com/gitleaks/gitleaks
+  rev: v8.24.2
+  hooks:
+    - id: gitleaks
+      args: ["--verbose"]
+
+- repo: https://github.com/jendrikseipp/vulture
+  rev: 'v2.16'  # or any later Vulture version
+  hooks:
+    - id: vulture
+      args: ["--config=backend/pyproject.toml", "backend/app"]
+
+
+##### JS and React frontend hooks #####
+
+- repo: https://github.com/oxc-project/mirrors-oxlint
+  rev: v1.73.0
+  hooks:
+    - id: oxlint
+
+- repo: https://github.com/oxc-project/mirrors-oxfmt
+  rev: v0.58.0
+  hooks:
+    - id: oxfmt
