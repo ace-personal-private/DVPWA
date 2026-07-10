@@ -1,0 +1,84 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+  pull_request:
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+
+jobs:
+  lint:
+    name: Lint, format & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "26"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: oxlint
+        run: npm run lint
+
+      - name: oxfmt check
+        run: npm run fmt:check
+
+      - name: Type check & build
+        run: npm run build
+
+  sast:
+    name: SAST (semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+
+      # Findings are expected here too (e.g. planted stored-XSS sink) - this
+      # reports, it does not gate the build.
+      - name: Semgrep
+        run: >
+          uvx semgrep@latest scan
+          --config=p/security-audit --config=p/typescript --config=p/react
+          --sarif --output=semgrep-frontend.sarif
+          --exit-zero
+          frontend/src
+
+      - name: Upload SAST report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-sast-report
+          path: semgrep-frontend.sarif
+          if-no-files-found: ignore
+
+      - name: Upload Semgrep results to code scanning
+        if: always()
+        continue-on-error: true # requires GitHub Advanced Security on private repos
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep-frontend.sarif
+          category: semgrep-frontend
+
+  docker-build:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build frontend image
+        run: docker build -t stonksco-frontend:ci ./frontend

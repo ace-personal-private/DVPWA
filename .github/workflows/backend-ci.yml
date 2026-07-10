@@ -1,0 +1,99 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+jobs:
+  lint:
+    name: Lint & format
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Ruff check
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+      - name: Vulture (dead code)
+        run: uv run vulture --config=pyproject.toml app
+
+  sast:
+    name: SAST (bandit + semgrep)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      # This app plants CWEs on purpose (VULN-CWE-* markers), so bandit/semgrep
+      # WILL find things by design. These steps report findings as artifacts
+      # and (best-effort) code-scanning alerts; they do not gate the build.
+      - name: Bandit
+        run: uv run bandit -c pyproject.toml -r app -f json -o bandit-report.json
+        continue-on-error: true
+
+      - name: Semgrep
+        run: >
+          uvx semgrep@latest scan
+          --config=p/security-audit --config=p/python
+          --sarif --output=semgrep-backend.sarif
+          --exit-zero
+          app
+
+      - name: Upload SAST reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-sast-reports
+          path: |
+            backend/bandit-report.json
+            backend/semgrep-backend.sarif
+          if-no-files-found: ignore
+
+      - name: Upload Semgrep results to code scanning
+        if: always()
+        continue-on-error: true # requires GitHub Advanced Security on private repos
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: backend/semgrep-backend.sarif
+          category: semgrep-backend
+
+  docker-build:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
+        run: docker build -t stonksco-backend:ci ./backend
