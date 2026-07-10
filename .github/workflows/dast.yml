@@ -12,7 +12,7 @@ jobs:
     name: OWASP ZAP scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Create .env for stack
         run: cp .env.example .env
@@ -42,7 +42,7 @@ jobs:
       # sites), so ZAP WILL find real issues by design. These steps produce
       # reports/artifacts; they do not gate the build and do not file issues.
       - name: ZAP baseline scan (frontend)
-        uses: zaproxy/action-baseline@v0.15.0
+        uses: zaproxy/action-baseline@6c5a007541891231cd9e0ddec25d4f25c59c9874 # v0.15.0
         with:
           target: "http://localhost:5173"
           cmd_options: "-a"
@@ -50,7 +50,7 @@ jobs:
           allow_issue_writing: false
 
       - name: ZAP API scan (backend OpenAPI)
-        uses: zaproxy/action-api-scan@v0.10.0
+        uses: zaproxy/action-api-scan@bd24b11e76da11ab60302c8ae87f091cbb11f034 # v0.10.0
         with:
           target: "http://localhost:8000/openapi.json"
           format: openapi

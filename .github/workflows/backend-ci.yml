@@ -19,7 +19,7 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Install uv
         uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
@@ -46,7 +46,7 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Install uv
         uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
@@ -69,12 +69,11 @@ jobs:
           uvx semgrep@latest scan
           --config=p/security-audit --config=p/python
           --sarif --output=semgrep-backend.sarif
-          --exit-zero
           app
 
       - name: Upload SAST reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: backend-sast-reports
           path: |
@@ -85,7 +84,7 @@ jobs:
       - name: Upload Semgrep results to code scanning
         if: always()
         continue-on-error: true # requires GitHub Advanced Security on private repos
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@24ea975727876cf496b1eb0c5b36e96e01600b51 # v4.37.0
         with:
           sarif_file: backend/semgrep-backend.sarif
           category: semgrep-backend
@@ -94,6 +93,6 @@ jobs:
     name: Docker build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Build backend image
         run: docker build -t stonksco-backend:ci ./backend
