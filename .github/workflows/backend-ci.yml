@@ -42,6 +42,10 @@ jobs:
   sast:
     name: SAST (bandit + semgrep)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read # lets semgrep read CI run context instead of erroring
+      security-events: write # lets the SARIF upload write to the Security tab
     defaults:
       run:
         working-directory: backend

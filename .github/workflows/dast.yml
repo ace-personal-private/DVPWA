@@ -48,6 +48,7 @@ jobs:
           cmd_options: "-a"
           fail_action: false
           allow_issue_writing: false
+          artifact_name: zap-baseline-frontend
 
       - name: ZAP API scan (backend OpenAPI)
         uses: zaproxy/action-api-scan@bd24b11e76da11ab60302c8ae87f091cbb11f034 # v0.10.0
@@ -57,6 +58,7 @@ jobs:
           cmd_options: "-a"
           fail_action: false
           allow_issue_writing: false
+          artifact_name: zap-api-scan-backend
 
       - name: Tear down stack
         if: always()
