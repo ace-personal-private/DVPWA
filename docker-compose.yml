@@ -1,4 +1,59 @@
 services:
+  traefik:
+    image: traefik:v3.7
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./infra/certs:/certs:ro
+      - ./infra/dynamic:/dynamic:ro
+
+    command:
+      # EntryPoints
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.websecure.http.tls=true"
+
+      # Attach the static configuration tls.yaml file that contains the tls configuration settings
+      - "--providers.file.filename=/dynamic/tls.yaml"
+
+      # Providers
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=proxy"
+
+      # API & Dashboard
+      - "--api.dashboard=true"
+      - "--api.insecure=false"
+
+      # Observability
+      - "--log.level=INFO"
+      - "--accesslog=true"
+      - "--metrics.prometheus=true"
+
+    labels:
+      # Enable self‑routing
+      - "traefik.enable=true"
+
+      # Dashboard router
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.stonksco.com`)"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.tls=true"
+
+    ports:
+      - "80:80"
+      - "443:443"
+
+    networks:
+      - proxy
+
   db:
     image: postgres:18-alpine
     environment:
@@ -6,35 +61,47 @@ services:
       POSTGRES_PASSWORD: stonksco_dev
       POSTGRES_DB: app
     ports:
-      - "5432:5432"
+      - "5432"
     volumes:
       - pgdata:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U stonksco -d app"]
+      test: [ "CMD-SHELL", "pg_isready -U stonksco -d app" ]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - proxy
 
   api:
-      build: ./backend
-      ports:
-        - "8000:8000"
-      env_file: .env
-      depends_on:
-        db:
-          condition: service_healthy
-      volumes:
-        - ./backend:/app
-      command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    build: ./backend
+    ports:
+      - "8000"
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`api.stonksco.com`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls=true"
+      - "traefik.http.services.api.loadbalancer.server.port=8000"
+    networks:
+      - proxy
 
   frontend:
     build: ./frontend
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    command: npm run dev -- --host 0.0.0.0
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`app.stonksco.com`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls=true"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+    networks:
+      - proxy
 
   adminer:
     image: dpage/pgadmin4:latest
@@ -43,9 +110,19 @@ services:
       PGADMIN_DEFAULT_PASSWORD: admin
       # setup server connection to the database
 
-    ports:
-      - "8080:80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.adminer.rule=Host(`adminer.stonksco.com`)"
+      - "traefik.http.routers.adminer.entrypoints=websecure"
+      - "traefik.http.routers.adminer.tls=true"
 
+    ports:
+      - "80"
+    networks:
+      - proxy
+
+networks:
+  proxy:
 
 volumes:
   pgdata:

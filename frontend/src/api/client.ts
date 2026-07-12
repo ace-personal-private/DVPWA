@@ -1,4 +1,4 @@
-export const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+export const API_BASE = import.meta.env.VITE_API_URL ?? "https://api.stonksco.com/";
 
 // VULN: tokens live in localStorage (not an httpOnly cookie), which is what
 // makes the stored-XSS chain (support ticket -> admin viewer) able to steal
