@@ -89,16 +89,19 @@ jobs:
   docker-build:
     name: Docker build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Build frontend image
         run: docker build -t stonksco-frontend:ci ./frontend
 
       # scan the image with trivy (vulnerability scanner) - this is a best-effort scan, it gates the build if it finds a CVE with severity HIGH or CRITICAL, but it does not fail the build for lower-severity CVEs.
-      - name: Scan backend image with Trivy
+      - name: Scan frontend image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: "stonksco-backend:ci"
+          image-ref: "stonksco-frontend:ci"
           format: "table"
           exit-code: "1"
           ignore-unfixed: true

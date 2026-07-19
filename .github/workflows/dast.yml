@@ -20,10 +20,22 @@ jobs:
       - name: Start application stack
         run: docker compose up -d db api frontend
 
+      - name: Get api and frontend container names
+        id: get-container-names
+        run: |
+          echo "API_CONTAINER=$(docker ps --filter 'name=api' --format '{{.Names}}')" >> $GITHUB_ENV
+          echo "FRONTEND_CONTAINER=$(docker ps --filter 'name=frontend' --format '{{.Names}}')" >> $GITHUB_ENV
+
+      - name: Get api and frontend container IPs
+        id: get-container-ips
+        run: |
+          echo "API_CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${{ env.API_CONTAINER }})" >> $GITHUB_ENV
+          echo "FRONTEND_CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${{ env.FRONTEND_CONTAINER }})" >> $GITHUB_ENV
+
       - name: Wait for backend
         run: |
           for i in $(seq 1 30); do
-            curl -sf http://localhost:8000/health && exit 0
+            curl -sf http://${{ env.API_CONTAINER_IP }}:8000/health && exit 0
             sleep 2
           done
           echo "backend did not become healthy in time" >&2
@@ -32,7 +44,7 @@ jobs:
       - name: Wait for frontend
         run: |
           for i in $(seq 1 30); do
-            curl -sf http://localhost:5173 && exit 0
+            curl -sf http://${{ env.FRONEND_CONTAINER_IP }} && exit 0
             sleep 2
           done
           echo "frontend did not become healthy in time" >&2
@@ -44,7 +56,7 @@ jobs:
       - name: ZAP baseline scan (frontend)
         uses: zaproxy/action-baseline@6c5a007541891231cd9e0ddec25d4f25c59c9874 # v0.15.0
         with:
-          target: "http://localhost:5173"
+          target: "http://${{ env.FRONEND_CONTAINER_IP }}"
           cmd_options: "-a -x report_xml.xml"
           fail_action: false
           allow_issue_writing: false
@@ -64,7 +76,7 @@ jobs:
       - name: ZAP API scan (backend OpenAPI)
         uses: zaproxy/action-api-scan@bd24b11e76da11ab60302c8ae87f091cbb11f034 # v0.10.0
         with:
-          target: "http://localhost:8000/openapi.json"
+          target: "http://${{ env.API_CONTAINER_IP }}:8000/openapi.json"
           format: openapi
           cmd_options: "-a -x report_xml.xml"
           fail_action: false
@@ -78,6 +90,58 @@ jobs:
           DEFECTDOJO_URL: ${{ secrets.DEFECTDOJO_URL }}
           DEFECTDOJO_API_KEY: ${{ secrets.DEFECTDOJO_API_KEY }}
         run: "$GITHUB_WORKSPACE/.github/scripts/defectdojo-upload.sh 'ZAP Scan' report_xml.xml 'StonksCo Backend' 'ZAP API Scan'"
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose down -v
+
+  docker-bench:
+    name: Docker Bench for Security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Create .env for stack
+        run: cp .env.example .env
+
+      - name: Start application stack
+        run: docker compose up -d db api frontend
+
+      - name: Build Docker Bench for Security
+        run: |
+          git clone --depth 1 https://github.com/docker/docker-bench-security.git /tmp/docker-bench-security
+          docker build --no-cache -t docker-bench-security /tmp/docker-bench-security
+
+      # Host/daemon checks (sections 1-2) mostly reflect the GitHub runner,
+      # not this app, so we scope to the image/runtime checks that are
+      # actionable against our Dockerfiles and compose config. Non-gating,
+      # like the other scanners in this workflow.
+      - name: Run Docker Bench for Security
+        run: |
+          mkdir -p bench-report
+          docker run --rm --net host --pid host --userns host --cap-add audit_control \
+            -v /etc:/etc:ro \
+            -v /var/lib:/var/lib:ro \
+            -v /var/run/docker.sock:/var/run/docker.sock:ro \
+            -v "$PWD/bench-report:/usr/local/bin/log" \
+            --label docker_bench_security \
+            docker-bench-security -c container_images,container_runtime
+
+      - name: Upload Docker Bench report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: docker-bench-security-report
+          path: bench-report/
+          if-no-files-found: ignore
+
+      - name: Upload Docker Bench results to DefectDojo
+        if: always()
+        continue-on-error: true
+        env:
+          DEFECTDOJO_URL: ${{ secrets.DEFECTDOJO_URL }}
+          DEFECTDOJO_API_KEY: ${{ secrets.DEFECTDOJO_API_KEY }}
+        run: "$GITHUB_WORKSPACE/.github/scripts/defectdojo-upload.sh 'docker-bench-security Scan' bench-report/docker-bench-security.log.json 'StonksCo Infra' 'Docker Bench'"
 
       - name: Tear down stack
         if: always()
