@@ -10,7 +10,6 @@ services:
       retries: 5
     security_opt:
       - no-new-privileges:true
-
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./infra/certs:/certs:ro
@@ -63,6 +62,9 @@ services:
       POSTGRES_USER: stonksco
       POSTGRES_PASSWORD: stonksco_dev
       POSTGRES_DB: app
+
+    security_opt:
+      - no-new-privileges:true
     ports:
       - "5432"
     volumes:
@@ -78,6 +80,9 @@ services:
     ports:
       - "8000"
     env_file: .env
+
+    security_opt:
+      - no-new-privileges:true
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 5s
@@ -100,6 +105,9 @@ services:
     build: ./frontend
     ports:
       - "8080"
+
+    security_opt:
+      - no-new-privileges:true
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
       interval: 5s
@@ -119,6 +127,9 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+    security_opt:
+      - no-new-privileges:true
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@stonksco.com
       PGADMIN_DEFAULT_PASSWORD: admin

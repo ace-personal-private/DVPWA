@@ -44,7 +44,7 @@ jobs:
       - name: Wait for frontend
         run: |
           for i in $(seq 1 30); do
-            curl -sf http://${{ env.FRONEND_CONTAINER_IP }} && exit 0
+            curl -sf http://${{ env.FRONTEND_CONTAINER_IP }}:8080 && exit 0
             sleep 2
           done
           echo "frontend did not become healthy in time" >&2
@@ -56,7 +56,7 @@ jobs:
       - name: ZAP baseline scan (frontend)
         uses: zaproxy/action-baseline@6c5a007541891231cd9e0ddec25d4f25c59c9874 # v0.15.0
         with:
-          target: "http://${{ env.FRONEND_CONTAINER_IP }}"
+          target: "http://${{ env.FRONTEND_CONTAINER_IP }}:8080"
           cmd_options: "-a -x report_xml.xml"
           fail_action: false
           allow_issue_writing: false
