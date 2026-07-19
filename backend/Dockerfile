@@ -12,7 +12,7 @@ RUN apk add --no-cache \
       openssl-dev \
       zlib-dev
 
-RUN addgroup -S app && adduser -S -G app app
+RUN addgroup -S app && adduser -S -G app 1000
 
 WORKDIR /app
 # Use pip cache, build wheels once, then install from wheels (fast on rebuilds)
@@ -20,8 +20,8 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-install-project --no-dev
 
 COPY . /app
-RUN uv sync --locked --no-dev && chown -R app:app /app
+RUN uv sync --locked --no-dev && chown -R 1000:app /app
 
-USER app
+USER 1000
 
 CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
