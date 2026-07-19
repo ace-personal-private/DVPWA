@@ -1,0 +1,32 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: stonksco-viewer
+  namespace: stonksco
+rules:
+  - apiGroups: ["", "apps", "gateway.networking.k8s.io"]
+    resources:
+      [
+        "pods",
+        "services",
+        "deployments",
+        "configmaps",
+        "gateways",
+        "httproutes",
+      ]
+    verbs: ["get", "list", "watch"]
+  # deliberately no "secrets" here — viewer access should never include credentials
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: stonksco-viewer-binding
+  namespace: stonksco
+subjects:
+  - kind: User
+    name: your-dev-account # or `kind: Group` for an IdP-backed group
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: stonksco-viewer
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+  namespace: stonksco
+spec:
+  replicas: 1 # Postgres isn't horizontally scalable like this; 1 is correct here
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db # Service finds Pods via this label
+    spec:
+      serviceAccountName: db-sa
+      automountServiceAccountToken: false
+      securityContext:
+        runAsUser: 999 # postgres user in the alpine image; mirrors `user: postgres` in compose
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: db
+          image: postgres:18-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: db-credentials
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql
+            - name: run-postgresql
+              mountPath: /var/run/postgresql
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "stonksco", "-d", "app"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "stonksco", "-d", "app"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: pgdata
+          persistentVolumeClaim:
+            claimName: pgdata
+        - name: run-postgresql
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}

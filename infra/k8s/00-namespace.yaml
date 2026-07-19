@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: stonksco
+  labels:
+    pod-security.kubernetes.io/enforce: "restricted" # restricts Pods to the "restricted" PodSecurity standard
+    pod-security.kubernetes.io/enforce-version: "latest" # uses the latest version of the PodSecurity standard
+    pod-security.kubernetes.io/audit: "restricted" # audit Pods against the "restricted" PodSecurity standard
+    pod-security.kubernetes.io/warn: "restricted" # warn about Pods that violate the "restricted" PodSecurity standard
