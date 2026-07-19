@@ -45,20 +45,39 @@ jobs:
         uses: zaproxy/action-baseline@6c5a007541891231cd9e0ddec25d4f25c59c9874 # v0.15.0
         with:
           target: "http://localhost:5173"
-          cmd_options: "-a"
+          cmd_options: "-a -x report_xml.xml"
           fail_action: false
           allow_issue_writing: false
           artifact_name: zap-baseline-frontend
+
+      # # Must run before the API scan below overwrites report_xml.xml with its
+      # # own output (both actions write into $GITHUB_WORKSPACE with the same
+      # # fixed filename).
+      # - name: Upload ZAP baseline results to DefectDojo
+      #   if: always()
+      #   continue-on-error: true
+      #   env:
+      #     DEFECTDOJO_URL: ${{ secrets.DEFECTDOJO_URL }}
+      #     DEFECTDOJO_API_KEY: ${{ secrets.DEFECTDOJO_API_KEY }}
+      #   run: "$GITHUB_WORKSPACE/.github/scripts/defectdojo-upload.sh 'ZAP Scan' report_xml.xml 'StonksCo Frontend' 'ZAP Baseline'"
 
       - name: ZAP API scan (backend OpenAPI)
         uses: zaproxy/action-api-scan@bd24b11e76da11ab60302c8ae87f091cbb11f034 # v0.10.0
         with:
           target: "http://localhost:8000/openapi.json"
           format: openapi
-          cmd_options: "-a"
+          cmd_options: "-a -x report_xml.xml"
           fail_action: false
           allow_issue_writing: false
           artifact_name: zap-api-scan-backend
+
+      - name: Upload ZAP API scan results to DefectDojo
+        if: always()
+        continue-on-error: true
+        env:
+          DEFECTDOJO_URL: ${{ secrets.DEFECTDOJO_URL }}
+          DEFECTDOJO_API_KEY: ${{ secrets.DEFECTDOJO_API_KEY }}
+        run: "$GITHUB_WORKSPACE/.github/scripts/defectdojo-upload.sh 'ZAP Scan' report_xml.xml 'StonksCo Backend' 'ZAP API Scan'"
 
       - name: Tear down stack
         if: always()
